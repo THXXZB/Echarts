@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" type="text/css" href="css/app.css" />
+  <title>电阻率</title>
+</head>
+
+<body>
+  <header id="header">
+    <h3 class="header-title">电阻率全天变化概览</h3>
+    <div class="header-info header-info-l" id="city">数据来源：江西财经大学</div>
+    <div class="header-info header-info-r">数据日期：<span id="nowDate"></span></div>
+  </header>
+
+  <footer id="footer"></footer>
+
+  <div id="container">
+    <div id="flexCon">
+      <div class="flex-row">
+        <div class="flex-cell flex-cell-l">
+          <div class="chart-wrapper">
+            <h3 class="chart-title">电阻率随温度变化趋势</h3>
+            <div class="chart-div" id="temperatureChart" style="width: 380px; height: 260px;">
+              <div class="chart-loader">
+                <div class="loader"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="flex-cell flex-cell-c" style="padding-right:0;">
+          <div class="chart-wrapper">
+            <h3 class="chart-title">统计数据</h3>
+            <div class="chart-div chart-done">
+              <table class="data-t">
+                <tr>
+                  <th><img src="img/icon-01.png" /></th>
+                  <td>
+                    <p><span id="listedCompany">0</span></p>
+                    <p>时间</p>
+                  </td>
+                  <th><img src="img/icon-02.png" /></th>
+                  <td>
+                    <p><span id="listedSecurity">0</span></p>
+                    <p>电阻率</p>
+                  </td>
+                </tr>
+                <tr>
+                  <th><img src="img/icon-03.png" /></th>
+                  <td>
+                    <p><span id="totalMarket">0</span></p>
+                    <p>温度</p>
+                  </td>
+                  <th><img src="img/icon-04.png" /></th>
+                  <td>
+                    <p><span id="circulationMarket">0</span></p>
+                    <p>天气</p>
+                  </td>
+                </tr>
+                <!-- <tr>
+                  <th><img src="img/icon-05.png" /></th>
+                  <td>
+                    <p><span id="shRatio">0</span></p>
+                    <p>上市平均市盈率</p>
+                  </td>
+                  <th><img src="img/icon-06.png" /></th>
+                  <td>
+                    <p><span id="szRatio">0</span></p>
+                    <p>深市平均市盈率</p>
+                  </td>
+                </tr> -->
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="flex-cell flex-cell-r" style="padding-left:0;">
+          <div class="chart-wrapper">
+            <h3 class="chart-title">电阻率随天气变化趋势</h3>
+            <div class="chart-div" id="weatherChart">
+              <div class="chart-loader">
+                <div class="loader"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex-row">
+        <div class="flex-cell flex-cell-lc" style="padding-bottom:0;">
+          <div class="chart-wrapper">
+            <h3 class="chart-title">当天电阻率变化趋势</h3>
+            <div class="chart-div" id="resistanceChart" style="width: 860px; height: 265px;">
+              <div class="chart-loader">
+                <div class="loader"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="flex-cell flex-cell-r" style="padding-bottom:0;">
+          <div class="chart-wrapper">
+            <h3 class="chart-title">电阻率分布</h3>
+            <div class="chart-div" id="specificChart">
+              <div class="chart-loader">
+                <div class="loader"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="text/javascript" src="js/jquery-3.3.1.min.js"></script>
+  <script type="text/javascript" src="js/countUp.min.js"></script>
+  <script type="text/javascript" src="js/echarts.min.js"></script>
+  <script type="text/javascript" src="js/echarts-map-china.js"></script>
+  <script type="text/javascript" src="js/echarts-theme-shine.js"></script>
+  <script>
+    function jsonP(option) {
+      const {
+        url,
+        callback
+      } = option
+
+      return new Promise((resolve, reject) => {
+        let methodName = 'abc'
+        window[methodName] = function (data) {
+          resolve(data)
+          // 删除
+          // delete window[methodName]
+          // document.body.removeChild(scriptNode)
+        }
+        // 生成script
+        var scriptNode = document.createElement('script')
+        scriptNode.src = `${url}?${callback}=${methodName}`
+        scriptNode.id = 'delete'
+        // console.log(`${url}?${callback}=${methodName}`)
+        document.body.appendChild(scriptNode)
+        // 失败
+        scriptNode.onerror = function () {
+          reject('error')
+        }
+      })
+    }
+
+
+    var value = {}
+    var pieDate = []
+    var tempValue = {}
+    var weatherVal = {}
+    var resisChart
+    var resisOption = {}
+    var tempChart
+    var tempOption = {}
+    var SunnyChart
+    var SunnyOption = {}
+    var specifChart
+    var specifOption = {}
+    // 获取数据
+    async function get() {
+
+      let val = await jsonP({
+        url: 'http://localhost:3002/api/books',
+        callback: 'getBook'
+      })
+      console.log('获取的数据', val)
+
+      // 当天电阻率变化趋势
+      value = data(val);
+      resisChart = echarts.init(document.getElementById('resistanceChart'))
+      resisOption = {
+
+        legend: {
+          data: ['电阻率', '最高气温', '最低气温'],
+          textStyle: {
+            color: '#EBA954'
+          }
+        },
+        xAxis: {
+          name: '时间',
+          type: 'category',
+          data: value.xDate,
+          splitLine: {
+            show: true,
+            lineStyle: {
+              color: "#0c2c5a",
+              width: 1,
+              type: 'dotted'
+            }
+          },
+          // boundaryGap: false,
+          splitNumber: 24,
+          axisLine: {
+            lineStyle: {
+              color: "#02b0ec"
+            }
+          },
+          axisLabel: {
+            textStyle: {
+              color: "#82b0ec"
+            }
+          }
+        },
+        yAxis: [{
+            name: '电阻率',
+            type: "value",
+            axisLabel: {
+              textStyle: {
+                color: "#82b0ec"
+              }
+            },
+            axisLine: {
+              lineStyle: {
+                color: "#02b0ec"
+              }
+            },
+            splitLine: {
+              show: true,
+              lineStyle: {
+                color: "#0c2c5a",
+                width: 1,
+                type: 'dashed'
+              }
+            }
+          },
+          {
+            name: '温度',
+            type: "value",
+            axisLabel: {
+              textStyle: {
+                color: "#82b0ec"
+              }
+            },
+            axisLine: {
+              lineStyle: {
+                color: "#02b0ec"
+              }
+            },
+            splitLine: {
+              show: false
+            }
+          }
+        ],
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { // 坐标轴指示器，坐标轴触发有效
+            type: 'shadow' // 默认为直线，可选为：'line' | 'shadow'
+          }
+        },
+        series: [{
+            name: '电阻率',
+            type: "bar",
+            itemStyle: {
+              normal: {
+                color: '#1cefe8',
+                opacity: 0.7
+              }
+            },
+            barWidth: "20",
+            data: value.resistance,
+
+            markPoint: {
+              data: [{
+                name: '最大值',
+                type: 'max'
+              }]
+            }
+
+          },
+          {
+            name: '最高气温',
+            type: 'line',
+            data: value.maxTemperature,
+            itemStyle: {
+              normal: {
+                color: '#C23531'
+              },
+            },
+            smooth: true,
+            yAxisIndex: 1,
+            markLine: {
+              data: [{
+                name: '平均线',
+                type: 'average'
+              }]
+            }
+          },
+          {
+            name: '最低气温',
+            type: 'line',
+            data: value.minTemperature,
+            itemStyle: {
+              normal: {
+                color: '#F99111'
+              },
+            },
+            smooth: true,
+            yAxisIndex: 1
+          }
+        ]
+      };
+      resisChart.setOption(resisOption)
+
+      let len = value.xDate.length - 1
+      console.log('-------------', value, len)
+      document.getElementById('listedCompany').innerText = value.xDate[len]
+      document.getElementById('listedSecurity').innerText = value.resistance[len]
+      document.getElementById('totalMarket').innerText = (value.maxTemperature[len] + value.minTemperature[len]) / 2 + '℃'
+      document.getElementById('circulationMarket').innerText = value.weather[len]
+      document.getElementById('city').innerText = '数据来源：' + value.city[len]
+      document.getElementById('nowDate').innerText = value.date[len]
+
+      // 电阻率随温度变化
+      tempValue = tempData(val)
+      tempChart = echarts.init(document.getElementById('temperatureChart'))
+      tempOption = {
+        legend: {
+          data: ['电阻率'],
+          textStyle: {
+            color: '#EBA954'
+          },
+          left: 'left'
+        },
+        // events: {
+
+        // },
+        xAxis: {
+          name: '温度',
+          type: 'category',
+          data: tempValue.temp,
+          splitLine: {
+            show: true,
+            lineStyle: {
+              color: "#0c2c5a",
+              width: 1,
+              type: 'dotted'
+            }
+          },
+          // boundaryGap: false,
+          splitNumber: 24,
+          axisLine: {
+            lineStyle: {
+              color: "#02b0ec"
+            }
+          },
+          axisLabel: {
+            textStyle: {
+              color: "#82b0ec"
+            }
+          }
+        },
+        yAxis: {
+          name: '电阻率',
+          type: "value",
+          axisLabel: {
+            textStyle: {
+              color: "#82b0ec"
+            }
+            // formatter: "{value}"
+          },
+          axisLine: {
+            lineStyle: {
+              color: "#02b0ec"
+            }
+          },
+          splitLine: {
+            show: true,
+            lineStyle: {
+              color: "#0c2c5a",
+              width: 1,
+              type: 'dashed'
+            }
+          }
+        },
+        tooltip: {
+          trigger: 'item',
+          formatter: '{a}<br />{b}℃: {c}',
+          axisPointer: { // 坐标轴指示器，坐标轴触发有效
+            type: 'shadow' // 默认为直线，可选为：'line' | 'shadow'
+          }
+        },
+        series: [{
+          name: '电阻率',
+          type: 'pictorialBar',
+          symbolSize: [8, 4],
+          symbolOffset: [0, -2],
+          symbolPosition: "end",
+          itemStyle: {
+            normal: {
+              color: '#1cefe8'
+            }
+          },
+          z: 12,
+          data: tempValue.resis,
+          label: {
+            normal: {
+              show: true,
+              position: "top",
+              fontSize: 6
+              // "formatter": "{c}%"
+            }
+          },
+        }, {
+          name: '电阻率',
+          type: "bar",
+          itemStyle: {
+            normal: {
+              color: '#1cefe8',
+              opacity: 0.7
+            }
+          },
+          barWidth: "8",
+          data: tempValue.resis,
+
+          // markPoint: {
+          // data: [{
+          // name: '最大值',
+          // type: 'max'
+          // }]
+          // }
+
+        }]
+      }
+      tempChart.setOption(tempOption)
+
+      // 电阻率随天气变化
+      weatherVal = weatherData(val)
+      SunnyChart = echarts.init(document.getElementById('weatherChart'))
+      SunnyOption = {
+        xAxis: {
+          data: weatherVal.resis.sunny.length,
+        },
+        tooltip: {
+          trigger: 'item',
+          formatter: '{a}<br /> {c}',
+          axisPointer: { // 坐标轴指示器，坐标轴触发有效
+            type: 'shadow' // 默认为直线，可选为：'line' | 'shadow'
+          }
+        },
+        yAxis: {
+          name: '电阻率',
+          type: "value",
+          axisLabel: {
+            textStyle: {
+              color: "#82b0ec"
+            }
+            // formatter: "{value}"
+          },
+          axisLine: {
+            lineStyle: {
+              color: "#02b0ec"
+            }
+          },
+          splitLine: {
+            show: true,
+            lineStyle: {
+              color: "#0c2c5a",
+              width: 1,
+              type: 'dashed'
+            }
+          }
+        },
+        series: [{
+          name: '晴天',
+          type: 'line',
+          itemStyle: {
+            normal: {
+              color: '#1cefe8',
+              opacity: 0.7
+            }
+          },
+          data: weatherVal.resis.sunny
+        }]
+      };
+      SunnyChart.setOption(SunnyOption)
+
+      // 电阻率分布情况
+      pieDate = pie(value.resistance)
+      specifChart = echarts.init(document.getElementById('specificChart'))
+      specifOption = {
+        tooltip: {
+          trigger: 'item',
+          formatter: '{a}范围 ({b})<br />数量：{c}, 占比 {d}%'
+        },
+        legend: {
+          orient: 'vertical',
+          left: 'right',
+          textStyle: {
+            color: '#EBA954'
+          },
+          data: ['1 ~ 25', '25 ~ 50', '50 ~ 75', '75 ~ 100']
+        },
+        series: [{
+          name: '电阻率',
+          type: 'pie',
+          // radius: '55%',
+          radius: ['32%', '55%'],
+          startAngle: 0,
+          roseType: 'angle',
+          // legendHoverLink: false,
+          center: ['50%', '60%'],
+          data: [{
+              value: pieDate[0],
+              name: '1 ~ 25'
+            },
+            {
+              value: pieDate[1],
+              name: '25 ~ 50'
+            },
+            {
+              value: pieDate[2],
+              name: '50 ~ 75'
+            },
+            {
+              value: pieDate[3],
+              name: '75 ~ 100'
+            }
+          ],
+          itemStyle: {
+            normal: {
+              shadowBlur: 200,
+              shadowColor: 'rgba(0, 0, 0, 0.5)'
+            }
+          }
+        }]
+      }
+      specifChart.setOption(specifOption)
+
+      return new Promise((resolve, reject) => {
+        resolve(val)
+      })
+    }
+
+    // 处理数据
+    function data(val) {
+      let date = []
+      let xDate = []
+      let minTemp = []
+      let maxTemp = []
+      let resis = []
+      let wea = []
+      let city = []
+      for (let i = 0; i < val.length; i++) {
+        date.push(val[i][0])
+        xDate.push(val[i][1])
+        maxTemp.push(val[i][3])
+        resis.push(val[i][2])
+        minTemp.push(val[i][4])
+        wea.push(val[i][5])
+        city.push(val[i][6])
+      }
+      return {
+        date: date,
+        xDate: xDate,
+        maxTemperature: maxTemp,
+        minTemperature: minTemp,
+        resistance: resis,
+        weather: wea,
+        city: city
+      }
+    } 
+    // 电阻率随天气变化
+    function weatherData(val) {
+      let resis = {}
+      // let resis = []
+      let wea = []
+      for (let i = 0; i < val.length; i++) { //
+        // resis.push(val[i][2])
+        if (val[i][5] == '阴天') {
+          if (wea.indexOf(val[i][5]) == -1) {
+            wea.push(val[i][5])
+            resis.overcast = []
+          }
+          resis.overcast.push(val[i][2])
+        } else if (val[i][5] == '晴天') {
+          if (wea.indexOf(val[i][5]) == -1) {
+            wea.push(val[i][5])
+            resis.sunny = []
+          }
+          resis.sunny.push(val[i][2])
+        } else {
+          if (wea.indexOf(val[i][5]) == -1) {
+            wea.push(val[i][5])
+            resis.cloudy = []
+          }
+          resis.cloudy.push(val[i][2])
+        }
+      } // console.log(wea, resis)
+      return {
+        wea,
+        resis
+      }
+    }
+    // 电阻率随温度变化数据
+    function tempData(val) {
+      // let maxTemp = []
+      let resis = []
+      // let minTemp = []
+      let temp = []
+      for (let i = 0; i < val.length; i++) { //
+        // console.log('val[i][3]', val[i][3])
+        // maxTemp.push(val[i][3])
+        resis.push(val[i][2])
+        temp.push((val[i][3] + val[i][4]) / 2)
+        // minTemp.push(val[i][4])
+      }
+      console.log('1', temp, resis)
+      for (let i = 0; i < temp.length; i++) {
+        let minIndex = i
+        for (let j = i + 1; j < temp.length; j++) {
+          if (temp[j] <
+            temp[minIndex]) minIndex = j
+        } // console.log(temp) // console.log(i, minIndex, temp[minIndex]); // 
+        let flag = temp[i]
+        temp[i] = temp[minIndex]
+        temp[minIndex] = flag[temp[i], temp[minIndex]] = [temp[minIndex],
+          temp[i]
+        ]; // console.log(resis[minIndex]); [resis[i], resis[minIndex]]=[resis[minIndex], resis[i]]; //
+        // console.log(temp[minIndex], temp[i], resis[i]);
+      }
+      // console.log('2', temp, resis)
+      return {
+        temp,
+        resis
+      }
+    }
+    // 电阻率分布数据
+    function pie(resis) {
+      let pieDate = (new Array(4)).fill(0)
+      for (let i = 0; i < resis.length; i++) {
+        if (1 <= resis[i] &&
+          resis[i] < 25) {
+          pieDate[0]++
+        } else if (25 <= resis[i] && resis[i] < 50) {
+          pieDate[1]++
+        } else if (50 <= resis[i] &&
+          resis[i] < 75) {
+          pieDate[2]++
+        } else {
+          pieDate[3]++
+        }
+      }
+      // console.log(pieDate)
+      return pieDate
+    }
+
+
+    var newVal = oldVal = [];
+    async function start() {
+      newVal = oldVal = await get()
+      console.log('old------', oldVal)
+    }
+    start()
+
+    // 初始化
+    // 更新数据
+    setInterval(async () => {
+      // 删除script标签
+      let scriptNode = document.querySelectorAll('#delete')
+      // console.log('script----', scriptNode, scriptNode.length)
+      if (scriptNode.length > 0) {
+        document.body.removeChild(scriptNode[0])
+      }
+      newVal = await get()
+      console.log('update newVal', newVal)
+      if (newVal.length > oldVal.length) {
+        for (let i = oldVal.length; i < newVal.length; i++) {
+          console.log('update&&&&&&&&&&&&')
+
+          value.xDate.push(newVal[i][1])
+          value.temperature.push(newVal[i][3])
+          value.resistance.push(newVal[i][2])
+          value.weather.push(newVal[i][4])
+          resisChart.setOption(resisOption)
+        }
+        let len = value.xDate.length - 1
+        document.getElementById('listedCompany').innerText = value.xDate[len]
+        document.getElementById('listedSecurity').innerText = value.resistance[len]
+        document.getElementById('totalMarket').innerText = value.temperature[len]
+        document.getElementById('circulationMarket').innerText = value.weather[len]
+        document.getElementById('city').innerText = '数据来源：' + value.city[len]
+        document.getElementById('nowDate').innerText = value.date[len]
+
+
+        tempValue = tempData(newVal)
+        tempChart.setOption(tempOption)
+        weatherVal = weatherData(newVal)
+        SunnyChart.setOption(SunnyOption)
+        pieDate = pie(value.resistance)
+        specifChart.setOption(specifOption)
+        oldVal = newVal
+      }
+      // newVal = await get()
+    }, 4000)
+  </script>
+</body>
+
+</html>
